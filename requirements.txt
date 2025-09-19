@@ -1,0 +1,10 @@
+fastapi
+langchain
+langchain-community
+langchain-openai
+langchain-chroma
+langfuse
+openai
+python-dotenv
+pydantic-settings
+pydantic 
