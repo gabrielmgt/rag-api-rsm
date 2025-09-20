@@ -4,14 +4,13 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 from langfuse.langchain import CallbackHandler
 from langchain_chroma import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings, HuggingFaceEndpoint
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
-from langfuse import Langfuse
+from langfuse import Langfuse, observe
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from typing import List, Optional
-from langchain_deepseek import ChatDeepSeek
 from langchain.chat_models import init_chat_model
 
 load_dotenv()
@@ -29,6 +28,8 @@ embeddings = HuggingFaceEmbeddings(
     model_kwargs={'device': 'cpu'},  
     encode_kwargs={'normalize_embeddings': True}
 )
+
+langfuse_callback_handler = CallbackHandler()
 
 vectorstore = Chroma(embedding_function=embeddings, persist_directory="./chroma_db")
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
@@ -58,15 +59,23 @@ class QueryResponse(BaseModel):
 @app.get("/health")
 def read_root():
     return {"status": "ok"}
-    
+
+
+@observe(name="document_splitting")
+def split_documents_with_tracing(docs: str):
+    """do a tracing span for the method split_documents which has no callback for langfuse"""
+    chunks = text_splitter.split_documents(docs)
+    return chunks
+
     
 @app.post("/ingest", response_model=IngestResponse)
 def ingest_document(request: IngestRequest):
     try:
         docs = [Document(page_content=request.content, metadata={"document_type": request.document_type})]
-        chunks = text_splitter.split_documents(docs)
-        
-        vectorstore.add_documents(chunks)
+        #chunks = text_splitter.split_documents(docs) #might have to with trace here
+        chunks = split_documents_with_tracing(docs)
+
+        vectorstore.add_documents(chunks, callbacks=[langfuse_callback_handler])
         
         return IngestResponse(
             status="success",
@@ -82,7 +91,7 @@ def ingest_document(request: IngestRequest):
         
 @app.post("/query", response_model=QueryResponse)
 def query_document(request: QueryRequest):
-    langfuse_callback_handler = CallbackHandler()
+    
     
     template = """<|system|>
     You are a helpful AI assistant. Answer the question based only on the following context:
@@ -101,6 +110,7 @@ def query_document(request: QueryRequest):
     retrieved_docs = vectorstore.similarity_search(
         request.question, 
         k=4,  
+        config={"callbacks": [langfuse_callback_handler]}
     )
 
     docs_content = "\n\n".join(doc.page_content for doc in retrieved_docs)
