@@ -12,6 +12,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from typing import List, Optional
 from langchain.chat_models import init_chat_model
+from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 
 load_dotenv()
 
@@ -67,15 +68,24 @@ def split_documents_with_tracing(docs: str):
     chunks = text_splitter.split_documents(docs)
     return chunks
 
-    
+@observe(name="embedding_computation")
+def computate_embeddings_and_add_to_store(vectorstore, chunks):
+    """add_documents has embedding computations in it which we trace for using observe() because it doesn't accept the langfuse callback handler"""
+    vectorstore.add_documents(chunks, callbacks=[langfuse_callback_handler])
+
+@observe(name="document_ingestion")    
+def trace_ingest(request: IngestRequest):
+    """nest both chunk documents and embedding computations"""
+    docs = [Document(page_content=request.content, metadata={"document_type": request.document_type})]
+    chunks = split_documents_with_tracing(docs)
+
+    computate_embeddings_and_add_to_store(vectorstore, chunks)
+    return chunks
+
 @app.post("/ingest", response_model=IngestResponse)
 def ingest_document(request: IngestRequest):
     try:
-        docs = [Document(page_content=request.content, metadata={"document_type": request.document_type})]
-        #chunks = text_splitter.split_documents(docs) #might have to with trace here
-        chunks = split_documents_with_tracing(docs)
-
-        vectorstore.add_documents(chunks, callbacks=[langfuse_callback_handler])
+        chunks = trace_ingest(request)
         
         return IngestResponse(
             status="success",
@@ -88,11 +98,11 @@ def ingest_document(request: IngestRequest):
             message=f"An error occurred: {e}",
             chunks_created=0
         )
-        
+
 @app.post("/query", response_model=QueryResponse)
 def query_document(request: QueryRequest):
-    
-    
+
+
     template = """<|system|>
     You are a helpful AI assistant. Answer the question based only on the following context:
     {context}</s>
@@ -100,36 +110,33 @@ def query_document(request: QueryRequest):
     {question}</s>
     <|assistant|>
     """
-    prompt_template = ChatPromptTemplate.from_template(template)
-    
-    repo_id = "deepseek-ai/DeepSeek-R1-0528"
 
-    
     model = init_chat_model("gemini-2.0-flash", model_provider="google_genai")
 
-    retrieved_docs = vectorstore.similarity_search(
-        request.question, 
-        k=4,  
+    retriever = vectorstore.as_retriever()
+
+    def format_docs(docs):
+        return "\n\n".join(doc.page_content for doc in docs)
+
+    prompt = ChatPromptTemplate.from_template(template)
+
+    retrieved_docs = retriever.invoke(
+        request.question,
         config={"callbacks": [langfuse_callback_handler]}
     )
 
-    docs_content = "\n\n".join(doc.page_content for doc in retrieved_docs)
-    
-    prompt = prompt_template.invoke({
-        "question": request.question, 
-        "context": docs_content
-    })
-
-    model_response = model.invoke(
-        prompt, 
-        config={"callbacks": [langfuse_callback_handler]}
+    rag_chain = (
+        {"context": RunnableLambda(lambda x: format_docs(retrieved_docs)), "question": RunnablePassthrough()}
+        | prompt
+        | model
+        | StrOutputParser()
     )
-    
-    output_parser = StrOutputParser()
 
-    
-    answer = output_parser.invoke(model_response)
-    
+    answer = rag_chain.invoke(
+        request.question,
+        config={"callbacks": [langfuse_callback_handler]}
+        )
+
     sources = [
         Source(page=doc.metadata.get("page"), text=doc.page_content)
         for doc in retrieved_docs
