@@ -15,31 +15,61 @@ from typing import List, Optional
 from langchain.chat_models import init_chat_model
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 
-load_dotenv()
+from settings import Settings
 
+settings = Settings()
 app = FastAPI()
 
-langfuse = Langfuse(
-    secret_key=os.environ.get("LANGFUSE_SECRET_KEY"),
-    public_key=os.environ.get("LANGFUSE_PUBLIC_KEY"),
-    host=os.environ.get("LANGFUSE_HOST"),
-)
+def initialize_langfuse():
+    """
+    Setup Langfuse instance here
+    """
+    return Langfuse(
+        secret_key=settings.langfuse_secret_key,
+        public_key=settings.langfuse_public_key,
+        host=settings.langfuse_host,
+    )
 
-embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2",  
-    model_kwargs={'device': 'cpu'},  
-    encode_kwargs={'normalize_embeddings': True}
-)
+langfuse = initialize_langfuse()
+
+def initialize_embeddings_model():
+    """
+    Setup embeddings models here, add more models, etc
+    For our use case we don't really need more than HuggingFaceEmbeddings
+    """
+    return HuggingFaceEmbeddings(
+        model_name="sentence-transformers/all-MiniLM-L6-v2",  
+        model_kwargs={'device': 'cpu'},  
+        encode_kwargs={'normalize_embeddings': True}
+    )
+
+embeddings = initialize_embeddings_model()
 
 langfuse_callback_handler = CallbackHandler()
 
-vectorstore = Chroma(
-    embedding_function=embeddings, 
-    persist_directory="./chroma_db",
-    #host="localhost",
-    #ssl=,
-    #port=
-    )
+def initialize_vectorstore():
+    """
+    Setup Chroma vector store here 
+    We consider an in-memory Chroma and Chroma running on a separate container depending on the running mode defined by environment variable ENV
+    """
+    if settings.ENV == "dev":
+        return Chroma(
+            embedding_function=embeddings, 
+            persist_directory="./chroma_db",
+            #host="localhost",
+            #ssl=,
+            #port=
+            )
+    elif settings.ENV == "prod":
+        return Chroma(
+            embedding_function=embeddings, 
+            persist_directory="./chroma_db",
+            host=settings.chroma_host,
+            port=settings.chroma_port,
+            )
+
+
+vectorstore = initialize_vectorstore()
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
 
 
