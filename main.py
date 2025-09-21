@@ -1,4 +1,5 @@
 import os
+import asyncio
 from fastapi import FastAPI
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -32,7 +33,13 @@ embeddings = HuggingFaceEmbeddings(
 
 langfuse_callback_handler = CallbackHandler()
 
-vectorstore = Chroma(embedding_function=embeddings, persist_directory="./chroma_db")
+vectorstore = Chroma(
+    embedding_function=embeddings, 
+    persist_directory="./chroma_db",
+    #host="localhost",
+    #ssl=,
+    #port=
+    )
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
 
 
@@ -64,28 +71,28 @@ def read_root():
 
 @observe(name="document_splitting")
 def split_documents_with_tracing(docs: str):
-    """do a tracing span for the method split_documents which has no callback for langfuse"""
+    """do a tracing span for the method split_documents which has no callback for langfuse. no need for async because there's no external api calls"""
     chunks = text_splitter.split_documents(docs)
     return chunks
 
 @observe(name="embedding_computation")
-def computate_embeddings_and_add_to_store(vectorstore, chunks):
+async def computate_embeddings_and_add_to_store(chunks: List[str]):
     """add_documents has embedding computations in it which we trace for using observe() because it doesn't accept the langfuse callback handler"""
-    vectorstore.add_documents(chunks, callbacks=[langfuse_callback_handler])
+    await vectorstore.aadd_documents(chunks, callbacks=[langfuse_callback_handler])
 
 @observe(name="document_ingestion")    
-def trace_ingest(request: IngestRequest):
+async def trace_ingest(request: IngestRequest):
     """nest both chunk documents and embedding computations"""
     docs = [Document(page_content=request.content, metadata={"document_type": request.document_type})]
     chunks = split_documents_with_tracing(docs)
 
-    computate_embeddings_and_add_to_store(vectorstore, chunks)
+    await computate_embeddings_and_add_to_store(chunks)
     return chunks
 
 @app.post("/ingest", response_model=IngestResponse)
-def ingest_document(request: IngestRequest):
+async def ingest_document(request: IngestRequest):
     try:
-        chunks = trace_ingest(request)
+        chunks = await trace_ingest(request)
         
         return IngestResponse(
             status="success",
@@ -100,7 +107,7 @@ def ingest_document(request: IngestRequest):
         )
 
 @app.post("/query", response_model=QueryResponse)
-def query_document(request: QueryRequest):
+async def query_document(request: QueryRequest):
 
 
     template = """<|system|>
@@ -120,7 +127,7 @@ def query_document(request: QueryRequest):
 
     prompt = ChatPromptTemplate.from_template(template)
 
-    retrieved_docs = retriever.invoke(
+    retrieved_docs = await retriever.ainvoke(
         request.question,
         config={"callbacks": [langfuse_callback_handler]}
     )
@@ -132,7 +139,7 @@ def query_document(request: QueryRequest):
         | StrOutputParser()
     )
 
-    answer = rag_chain.invoke(
+    answer = await rag_chain.ainvoke(
         request.question,
         config={"callbacks": [langfuse_callback_handler]}
         )

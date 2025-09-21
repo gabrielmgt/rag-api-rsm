@@ -6,6 +6,8 @@ reports/
 .pytest_cache/
 test.py
 .env
+.env.dev
+.env.prod
 conda-env/
 chroma_db/
 curl_example.txt

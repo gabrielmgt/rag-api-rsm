@@ -1,10 +1,10 @@
 fastapi
 langchain
 langchain-community
-langchain-openai
+langchain[google-genai]
 langchain-chroma
 langfuse
-openai
 python-dotenv
 pydantic-settings
 pydantic 
+uvicorn
