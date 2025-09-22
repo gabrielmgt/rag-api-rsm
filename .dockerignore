@@ -1,0 +1,12 @@
+.git
+.ipynb_checkpoints/*
+venv/*
+conda-env/
+conda-env/*
+.env.dev
+.env
+.env.example
+.env.prod
+.gitignore
+README.md
+Dockerfile

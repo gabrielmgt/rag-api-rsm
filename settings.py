@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     langfuse_secret_key: str = Field(..., env="LANGFUSE_SECRET_KEY")
 
     chroma_host: str = Field(default="localhost", env="CHROMA_HOST")
-    chroma_port: int = Field(default="8001", env="CHROMA_PORT")
+    chroma_port: int = Field(default=8001, env="CHROMA_PORT")
     
     model_config = SettingsConfigDict(
         env_file = (".env.prod" if os.getenv("ENV") == "prod" else ".env.dev"),
@@ -27,4 +27,4 @@ class Settings(BaseSettings):
     LLM_provider: str = Field(..., env="LLM_PROVIDER")
     LLM_model: str = Field(..., env="LLM_MODEL")
     Google_API_Key: str = Field(..., env="GOOGLE_API_KEY")
-    Embeddings_model: str = Field(..., env="EMBEDDINGS_MODEL")
+    Embeddings_model: str = Field(default="huggingface", env="EMBEDDINGS_MODEL")

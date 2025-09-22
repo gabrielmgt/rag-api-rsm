@@ -1,7 +1,7 @@
 import os
 import asyncio
 from fastapi import FastAPI
-from pydantic import BaseModel
+from pydantic import BaseModel, HttpUrl, Field, model_validator
 from dotenv import load_dotenv
 from langfuse.langchain import CallbackHandler
 from langchain_chroma import Chroma
@@ -14,6 +14,10 @@ from langchain_core.output_parsers import StrOutputParser
 from typing import List, Optional
 from langchain.chat_models import init_chat_model
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
+from enum import Enum
+from langchain_community.document_loaders import WebBaseLoader, PyPDFLoader
+import requests
+import tempfile
 
 from settings import Settings
 
@@ -63,7 +67,6 @@ def initialize_vectorstore():
     elif settings.ENV == "prod":
         return Chroma(
             embedding_function=embeddings, 
-            persist_directory="./chroma_db",
             host=settings.chroma_host,
             port=settings.chroma_port,
             )
@@ -73,9 +76,6 @@ vectorstore = initialize_vectorstore()
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
 
 
-class IngestRequest(BaseModel):
-    content: str
-    document_type: str
 
 class IngestResponse(BaseModel):
     status: str
@@ -93,6 +93,27 @@ class QueryResponse(BaseModel):
     answer: str
     sources: List[Source]
     
+class DocumentType(str, Enum):
+    PDF = "pdf"
+    TEXT = "text"
+    HTML = "html"
+    MARKDOWN = "markdown"
+
+class IngestRequest(BaseModel):
+    content: Optional[str] = None
+    url: Optional[HttpUrl] = None
+    document_type: DocumentType
+
+    @model_validator(mode='after')
+    @classmethod
+    def validate_input(cls, values: 'IngestRequest') -> 'IngestRequest':
+        """Validate that either url or content is provided, but not both"""
+        if values.url is None and values.content is None:
+            raise ValueError('Either url or content must be provided')
+        if values.url is not None and values.content is not None:
+            raise ValueError('Provide either url or content, not both')
+        
+        return values
     
 @app.get("/health")
 def read_root():
@@ -101,23 +122,77 @@ def read_root():
 
 @observe(name="document_splitting")
 def split_documents_with_tracing(docs: str):
-    """do a tracing span for the method split_documents which has no callback for langfuse. no need for async because there's no external api calls"""
+    """Do a tracing span for the method split_documents which has no callback for langfuse. no need for async because there's no external api calls"""
     chunks = text_splitter.split_documents(docs)
     return chunks
 
 @observe(name="embedding_computation")
 async def computate_embeddings_and_add_to_store(chunks: List[str]):
-    """add_documents has embedding computations in it which we trace for using observe() because it doesn't accept the langfuse callback handler"""
+    """The method add_documents has embedding computations in it which we trace for using observe() because it doesn't accept the langfuse callback handler"""
     await vectorstore.aadd_documents(chunks, callbacks=[langfuse_callback_handler])
+
+def load_document_from_content(content: str, document_type: DocumentType) -> List[Document]:
+    """Load document from direct content"""
+    metadata = {"source": "direct_input", "document_type": document_type.value}
+    return [Document(page_content=content, metadata=metadata)]
+
+@observe(name="load_document_from_url")
+async def load_document_from_url(url: str, document_type: DocumentType) -> List[Document]:
+    """Load document from URL based on document type"""
+    try:
+        if document_type == DocumentType.HTML:
+            loader = WebBaseLoader([str(url)])
+            docs = loader.load()
+            return docs
+            
+        elif document_type == DocumentType.PDF:
+            response = requests.get(str(url))
+            response.raise_for_status()
+            
+            with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp_file:
+                tmp_file.write(response.content)
+                tmp_file_path = tmp_file.name
+            
+            try:
+                loader = PyPDFLoader(tmp_file_path)
+                docs = loader.load()
+                return docs
+            finally:
+                os.unlink(tmp_file_path)
+                
+        elif document_type == DocumentType.TEXT:
+            response = requests.get(str(url))
+            response.raise_for_status()
+            return [Document(page_content=response.text, metadata={"source": str(url)})]
+            
+        elif document_type == DocumentType.MARKDOWN:
+            response = requests.get(str(url))
+            response.raise_for_status()
+            return [Document(page_content=response.text, metadata={"source": str(url), "type": "markdown"})]
+            
+    except Exception as e:
+        raise ValueError(f"Failed to load document from URL: {e}")
 
 @observe(name="document_ingestion")    
 async def trace_ingest(request: IngestRequest):
-    """nest both chunk documents and embedding computations"""
-    docs = [Document(page_content=request.content, metadata={"document_type": request.document_type})]
-    chunks = split_documents_with_tracing(docs)
+    """Load document from URL if url is detected 
+    Nest both chunk documents and embedding computations"""
 
-    await computate_embeddings_and_add_to_store(chunks)
-    return chunks
+    try:
+        if request.url:
+            docs = await load_document_from_url(request.url, request.document_type)
+            for doc in docs:
+                doc.metadata["source_url"] = str(request.url)
+        elif request.content:
+            #docs = [Document(page_content=request.content, metadata={"document_type": request.document_type})]
+            docs = load_document_from_content(request.content, request.document_type)
+
+        chunks = split_documents_with_tracing(docs)
+
+        await computate_embeddings_and_add_to_store(chunks)
+        return chunks
+    except Exception as e:
+        raise Exception(f"Document ingestion failed: {e}")
 
 @app.post("/ingest", response_model=IngestResponse)
 async def ingest_document(request: IngestRequest):
@@ -148,7 +223,9 @@ async def query_document(request: QueryRequest):
     <|assistant|>
     """
 
-    model = init_chat_model("gemini-2.0-flash", model_provider="google_genai")
+    model = init_chat_model("gemini-2.0-flash", 
+                            model_provider="google_genai",
+                            api_key=settings.Google_API_Key)
 
     retriever = vectorstore.as_retriever()
 
