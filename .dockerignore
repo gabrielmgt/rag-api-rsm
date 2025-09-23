@@ -1,5 +1,13 @@
 .git
 .ipynb_checkpoints/*
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+.venv/
+chroma_db/ 
 venv/*
 conda-env/
 conda-env/*
