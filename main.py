@@ -12,7 +12,7 @@ from langfuse import Langfuse, observe
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from typing import List, Optional
-from langchain.chat_models import init_chat_model
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 from enum import Enum
 from langchain_community.document_loaders import WebBaseLoader, PyPDFLoader
@@ -54,7 +54,9 @@ langfuse_callback_handler = CallbackHandler()
 def initialize_vectorstore():
     """
     Setup Chroma vector store here 
-    We consider an in-memory Chroma and Chroma running on a separate container depending on the running mode defined by environment variable ENV
+    We consider an in-memory Chroma and Chroma running on a 
+    separate container depending on the running mode defined 
+    by environment variable ENV
     """
     if settings.ENV == "dev":
         return Chroma(
@@ -72,6 +74,20 @@ def initialize_vectorstore():
             )
 
 
+def initialize_chat_model():
+    """
+    Setup chat model here
+    Google's model works best for our use case
+    """
+    model = ChatGoogleGenerativeAI(
+        model="gemini-2.0-flash",  
+        google_api_key=settings.Google_API_Key,
+        temperature=0.1
+        )
+    return model
+
+
+chat_model = initialize_chat_model()
 vectorstore = initialize_vectorstore()
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
 
@@ -223,9 +239,7 @@ async def query_document(request: QueryRequest):
     <|assistant|>
     """
 
-    model = init_chat_model("gemini-2.0-flash", 
-                            model_provider="google_genai",
-                            api_key=settings.Google_API_Key)
+    model = chat_model
 
     retriever = vectorstore.as_retriever()
 
