@@ -1,6 +1,6 @@
 import os
 import asyncio
-from fastapi import FastAPI
+from fastapi import FastAPI, Response, Request
 from pydantic import BaseModel, HttpUrl, Field, model_validator
 from dotenv import load_dotenv
 from langfuse.langchain import CallbackHandler
@@ -16,6 +16,8 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 from enum import Enum
 from langchain_community.document_loaders import WebBaseLoader, PyPDFLoader
+from prometheus_client import Counter, Histogram, Gauge, generate_latest
+import time, psutil
 import requests
 import tempfile
 
@@ -25,6 +27,12 @@ from log_util import setup_logging
 settings = Settings()
 logger = setup_logging(settings.ENV)
 app = FastAPI()
+
+# Metrics definitions
+REQUEST_COUNT = Counter("http_requests_total", "Total HTTP requests", ["method", "endpoint", "status"])
+REQUEST_DURATION = Histogram("request_duration_seconds", "Request duration in seconds")
+CPU_USAGE = Gauge("cpu_usage_percent", "CPU usage percent")
+MEMORY_USAGE = Gauge("memory_usage_percent", "Memory usage percent")
 
 def initialize_langfuse():
     """
@@ -145,6 +153,15 @@ class IngestRequest(BaseModel):
             raise ValueError('Provide either url or content, not both')
         
         return values
+
+@app.middleware("http")
+async def metrics_middleware(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    duration = time.time() - start_time
+    REQUEST_COUNT.labels(request.method, request.url.path, str(response.status_code)).inc()
+    REQUEST_DURATION.observe(duration)
+    return response
     
 @app.get("/health")
 def read_root():
@@ -153,6 +170,13 @@ def read_root():
     """
     logger.debug("health_check_request")
     return {"status": "ok"}
+
+
+@app.get("/metrics")
+def metrics():
+    CPU_USAGE.set(psutil.cpu_percent())
+    MEMORY_USAGE.set(psutil.virtual_memory().percent)
+    return Response(generate_latest(), media_type="text/plain")
 
 
 @observe(name="document_splitting")
