@@ -20,19 +20,25 @@ import requests
 import tempfile
 
 from settings import Settings
+from log_util import setup_logging
 
 settings = Settings()
+logger = setup_logging(settings.ENV)
 app = FastAPI()
 
 def initialize_langfuse():
     """
     Setup Langfuse instance here
     """
-    return Langfuse(
+    logger.debug("initializing_langfuse", host=settings.langfuse_host)
+    langfuse_instance = Langfuse(
         secret_key=settings.langfuse_secret_key,
         public_key=settings.langfuse_public_key,
         host=settings.langfuse_host,
     )
+    logger.info("langfuse_initialized")
+    return langfuse_instance
+ 
 
 langfuse = initialize_langfuse()
 
@@ -41,11 +47,14 @@ def initialize_embeddings_model():
     Setup embeddings models here, add more models, etc
     For our use case we don't really need more than HuggingFaceEmbeddings
     """
-    return HuggingFaceEmbeddings(
+    logger.debug("initializing_embeddings_model", model_name="sentence-transformers/all-MiniLM-L6-v2")
+    embeddings_model_instance = HuggingFaceEmbeddings(
         model_name="sentence-transformers/all-MiniLM-L6-v2",  
         model_kwargs={'device': 'cpu'},  
         encode_kwargs={'normalize_embeddings': True}
     )
+    logger.info("embeddings_model_initialized")
+    return embeddings_model_instance
 
 embeddings = initialize_embeddings_model()
 
@@ -58,8 +67,10 @@ def initialize_vectorstore():
     separate container depending on the running mode defined 
     by environment variable ENV
     """
+    logger.debug("initializing_vectorstore", env=settings.ENV, host=settings.chroma_host, port=settings.chroma_port)
+    chroma_instance = None
     if settings.ENV == "dev":
-        return Chroma(
+        chroma_instance = Chroma(
             embedding_function=embeddings, 
             persist_directory="./chroma_db",
             #host="localhost",
@@ -67,11 +78,13 @@ def initialize_vectorstore():
             #port=
             )
     elif settings.ENV == "prod":
-        return Chroma(
+        chroma_instance = Chroma(
             embedding_function=embeddings, 
             host=settings.chroma_host,
             port=settings.chroma_port,
             )
+    logger.info("vectorstore_initialized", env=settings.ENV)
+    return chroma_instance
 
 
 def initialize_chat_model():
@@ -79,11 +92,13 @@ def initialize_chat_model():
     Setup chat model here
     Google's model works best for our use case
     """
+    logger.debug("initializing_chat_model", model="gemini-2.0-flash")
     model = ChatGoogleGenerativeAI(
         model="gemini-2.0-flash",  
         google_api_key=settings.Google_API_Key,
         temperature=0.1
         )
+    logger.info("chat_model_initialized")
     return model
 
 
@@ -133,24 +148,33 @@ class IngestRequest(BaseModel):
     
 @app.get("/health")
 def read_root():
+    """
+    Check health endpoint
+    """
+    logger.debug("health_check_request")
     return {"status": "ok"}
 
 
 @observe(name="document_splitting")
 def split_documents_with_tracing(docs: str):
     """Do a tracing span for the method split_documents which has no callback for langfuse. no need for async because there's no external api calls"""
+    logger.debug("splitting_documents", document_count=len(docs))
     chunks = text_splitter.split_documents(docs)
+    logger.info("documents_split", chunks_created=len(chunks))
     return chunks
 
 @observe(name="embedding_computation")
 async def computate_embeddings_and_add_to_store(chunks: List[str]):
     """The method add_documents has embedding computations in it which we trace for using observe() because it doesn't accept the langfuse callback handler"""
+    logger.debug("computing_embeddings", chunks_count=len(chunks))
     await vectorstore.aadd_documents(chunks, callbacks=[langfuse_callback_handler])
+    logger.info("embeddings_computed_and_stored", chunks_processed=len(chunks))
 
 def load_document_from_content(content: str, document_type: DocumentType) -> List[Document]:
     """Load document from direct content"""
     metadata = {"source": "direct_input", "document_type": document_type.value}
-    return [Document(page_content=content, metadata=metadata)]
+    docs = [Document(page_content=content, metadata=metadata)]
+    return docs
 
 @observe(name="load_document_from_url")
 async def load_document_from_url(url: str, document_type: DocumentType) -> List[Document]:
@@ -187,21 +211,28 @@ async def load_document_from_url(url: str, document_type: DocumentType) -> List[
             return [Document(page_content=response.text, metadata={"source": str(url), "type": "markdown"})]
             
     except Exception as e:
+        logger.error("document_loading_from_url_failed", url=str(url), error=str(e))
         raise ValueError(f"Failed to load document from URL: {e}")
 
 @observe(name="document_ingestion")    
 async def trace_ingest(request: IngestRequest):
-    """Load document from URL if url is detected 
-    Nest both chunk documents and embedding computations"""
+    """
+    Load document from URL if url is detected 
+    Nest both chunk documents and embedding computations
+    """
 
     try:
         if request.url:
+            logger.info("loading_document_from_url", url=str(request.url), document_type=request.document_type)
             docs = await load_document_from_url(request.url, request.document_type)
             for doc in docs:
                 doc.metadata["source_url"] = str(request.url)
+            logger.info("url_documents_loaded", documents_count=len(docs))
         elif request.content:
             #docs = [Document(page_content=request.content, metadata={"document_type": request.document_type})]
+            logger.debug("loading_document_from_content", document_type=request.document_type, content_length=len(request.content))
             docs = load_document_from_content(request.content, request.document_type)
+            logger.info("document_loaded_from_content")
 
         chunks = split_documents_with_tracing(docs)
 
@@ -212,8 +243,13 @@ async def trace_ingest(request: IngestRequest):
 
 @app.post("/ingest", response_model=IngestResponse)
 async def ingest_document(request: IngestRequest):
+    """
+    Document Ingestion endpoint
+    """
+    logger.info("ingest_started", document_type=request.document_type)
     try:
         chunks = await trace_ingest(request)
+        logger.info("ingest_completed", chunks_created=len(chunks))
         
         return IngestResponse(
             status="success",
@@ -221,6 +257,7 @@ async def ingest_document(request: IngestRequest):
             chunks_created=len(chunks)
         )
     except Exception as e:
+        logger.error("ingest_failed", error=str(e))
         return IngestResponse(
             status="error",
             message=f"An error occurred: {e}",
@@ -229,8 +266,10 @@ async def ingest_document(request: IngestRequest):
 
 @app.post("/query", response_model=QueryResponse)
 async def query_document(request: QueryRequest):
-
-
+    """
+    RAG Query endpoint
+    """
+    logger.info("query_received", question_length=len(request.question))
     template = """<|system|>
     You are a helpful AI assistant. Answer the question based only on the following context:
     {context}</s>
@@ -248,10 +287,12 @@ async def query_document(request: QueryRequest):
 
     prompt = ChatPromptTemplate.from_template(template)
 
+    logger.debug("retrieving_relevant_documents")
     retrieved_docs = await retriever.ainvoke(
         request.question,
         config={"callbacks": [langfuse_callback_handler]}
     )
+    logger.debug("documents_retrieved", count=len(retrieved_docs))
 
     rag_chain = (
         {"context": RunnableLambda(lambda x: format_docs(retrieved_docs)), "question": RunnablePassthrough()}
@@ -259,15 +300,18 @@ async def query_document(request: QueryRequest):
         | model
         | StrOutputParser()
     )
-
+    
+    logger.debug("generating_answer")
     answer = await rag_chain.ainvoke(
         request.question,
         config={"callbacks": [langfuse_callback_handler]}
         )
+    logger.debug("answer_generated", answer_length=len(answer))
 
     sources = [
         Source(page=doc.metadata.get("page"), text=doc.page_content)
         for doc in retrieved_docs
     ]
 
+    logger.info("query_success", answer_length=len(answer), sources_count=len(sources))
     return QueryResponse(answer=answer, sources=sources)
