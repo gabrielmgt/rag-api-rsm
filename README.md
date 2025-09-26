@@ -34,7 +34,7 @@ returns:
 {
 	"status": "success|error",
 	"message": "<status message>",
-	"chunks_created": <number>
+	"chunks_created": `<number>`
 }
 ```
 
@@ -50,7 +50,7 @@ returns:
 {
 	"answer": "<generated answer>",
 	"sources": [
-		{ "page": <number>, "text": "<passage text>" },
+		{ "page": `<number>`, "text": "<passage text>" },
 		…
 	]
 }
@@ -80,8 +80,8 @@ Start with a virtual environment. I recommend conda:
    ```bash
    pip install -r requirements-dev.txt
    ```
-4. Set environment variables in **.env.dev**. You may use **.env.dev.example**
-  - ENV: "dev"
+4. Set environment variables in **.env.dev**. You may use **.env.dev.example** as reference
+	- ENV: "dev"
 	- LANGFUSE_SECRET_KEY: LangFuse Secret Key
 	- LANGFUSE_PUBLIC_KEY: LangFuse Public Key
 	- LANGFUSE_HOST: https://us.cloud.langfuse.com or self-hosted
@@ -102,8 +102,8 @@ Start with a virtual environment. I recommend conda:
    ```
 
 ### Production (Docker) Deployment
-1. Set environment variables in **.env.prod**. You may use **.env.prod.example**
-  - ENV: "prod"
+1. Set environment variables in **.env.prod**. You may use **.env.prod.example** as reference
+	- ENV: "prod"
 	- LANGFUSE_SECRET_KEY: LangFuse Secret Key
 	- LANGFUSE_PUBLIC_KEY: LangFuse Public Key
 	- LANGFUSE_HOST: https://us.cloud.langfuse.com or self-hosted
@@ -113,7 +113,7 @@ Start with a virtual environment. I recommend conda:
 	- CHROMA_HOST: "chroma" (Container running ChromaDB)
 	- CHROMA_PORT: 8000 (ChromaDB port)
 
-2. Set Grafana environment variables in **grafana.env**. You may use **grafana.env.example**
+2. Set Grafana environment variables in **grafana.env**. You may use **grafana.env.example** as reference
 	- GF_SECURITY_ADMIN_PASSWORD: Set a password to access Grafana
 	- GF_SECURITY_ADMIN_USER: Set an admin username
  
@@ -166,8 +166,7 @@ curl -X POST "http://localhost:8000/query"   -H "Content-Type: application/json"
 ├── requirements.txt
 ├── settings.py
 ├── test_main.py
-├── chroma_db/
-├── conda-env/
+├── grafana.env.example
 ├── grafana/
 │   ├── dashboards/
 │   │   └── app-monitoring.json
