@@ -2,7 +2,6 @@ import os
 import asyncio
 from fastapi import FastAPI, Response, Request
 from pydantic import BaseModel, HttpUrl, Field, model_validator
-from dotenv import load_dotenv
 from langfuse.langchain import CallbackHandler
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings

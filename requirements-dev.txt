@@ -15,3 +15,9 @@ torch
 sentence_transformers==5.1.0
 structlog
 fastapi[standard]
+pytest
+httpx
+starlette 
+pytest-asyncio
+prometheus_client 
+psutil

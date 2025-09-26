@@ -45,7 +45,7 @@ services:
     env_file:
       - ./grafana.env
     restart: unless-stopped
-
+    
 volumes:
   chroma_data:
   prometheus_data:

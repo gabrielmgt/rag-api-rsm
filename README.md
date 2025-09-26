@@ -5,6 +5,8 @@ Changes to the API: Since the example documents are both URLs, I figured it woul
 
 I have perceived the task to be straightforward enough to complete using a LangChain chain, as the task doesn't require complex state management or conditional branching. The RAG process has a clear sequence: retrieve documents -> format prompt -> generate answer -> return response. 
 
+Tests can currently be run using the Development Environment instructions.
+
 ## Stack
 - Python 3.13
 - FastAPI
@@ -79,6 +81,7 @@ Start with a virtual environment. I recommend conda:
    pip install -r requirements-dev.txt
    ```
 4. Set environment variables in **.env.dev**. You may use **.env.dev.example**
+  - ENV: "dev"
 	- LANGFUSE_SECRET_KEY: LangFuse Secret Key
 	- LANGFUSE_PUBLIC_KEY: LangFuse Public Key
 	- LANGFUSE_HOST: https://us.cloud.langfuse.com or self-hosted
@@ -93,8 +96,14 @@ Start with a virtual environment. I recommend conda:
 	- Ingest endpoint: http://localhost:8000/ingest
 	- Query endpoint: http://localhost:8000/query
 
+7. Run tests:
+   ```bash
+   pytest test_main.py
+   ```
+
 ### Production (Docker) Deployment
 1. Set environment variables in **.env.prod**. You may use **.env.prod.example**
+  - ENV: "prod"
 	- LANGFUSE_SECRET_KEY: LangFuse Secret Key
 	- LANGFUSE_PUBLIC_KEY: LangFuse Public Key
 	- LANGFUSE_HOST: https://us.cloud.langfuse.com or self-hosted
