@@ -100,9 +100,9 @@ def initialize_chat_model():
     Setup chat model here
     Google's model works best for our use case
     """
-    logger.debug("initializing_chat_model", model="gemini-2.0-flash")
+    logger.debug("initializing_chat_model", model=settings.LLM_model)
     model = ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash",  
+        model=settings.LLM_model,  
         google_api_key=settings.Google_API_Key,
         temperature=0.1
         )
@@ -113,7 +113,6 @@ def initialize_chat_model():
 chat_model = initialize_chat_model()
 vectorstore = initialize_vectorstore()
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-
 
 
 class IngestResponse(BaseModel):
@@ -131,7 +130,7 @@ class Source(BaseModel):
 class QueryResponse(BaseModel):
     answer: str
     sources: List[Source]
-    
+
 class DocumentType(str, Enum):
     PDF = "pdf"
     TEXT = "text"

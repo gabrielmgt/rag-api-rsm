@@ -44,7 +44,8 @@ services:
       - ./grafana/dashboards:/var/lib/grafana/dashboards
     environment:
       - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin123
+    env_file:
+      - ./grafana.env
     restart: unless-stopped
 
 volumes:
