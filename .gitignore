@@ -11,6 +11,7 @@ test.py
 conda-env/
 chroma_db/
 curl_example.txt
+grafana.env
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

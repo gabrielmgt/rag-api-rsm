@@ -104,11 +104,15 @@ Start with a virtual environment. I recommend conda:
 	- CHROMA_HOST: "chroma" (Container running ChromaDB)
 	- CHROMA_PORT: 8000 (ChromaDB port)
 
-2. Build and run the services using Docker Compose:
+2. Set Grafana environment variables in **grafana.env**. You may use **grafana.env.example**
+	- GF_SECURITY_ADMIN_PASSWORD: Set a password to access Grafana
+	- GF_SECURITY_ADMIN_USER: Set an admin username
+ 
+3. Build and run the services using Docker Compose:
    ```bash
    docker-compose up --build
    ```
-3. Access:
+4. Access:
 	- Ingest endpoint: http://localhost:8000/ingest
 	- Query endpoint: http://localhost:8000/query
 	- Prometheus: http://localhost:9090
