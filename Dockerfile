@@ -2,6 +2,9 @@ FROM python:3.13-slim AS build-stage
 
 WORKDIR /app
 
+# attempt to install torch cpu 
+RUN pip install torch --index-url https://download.pytorch.org/whl/cpu
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
