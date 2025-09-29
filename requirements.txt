@@ -12,6 +12,6 @@ uvicorn==0.35.0
 beautifulsoup4==4.13.5
 requests==2.32.5
 sentence_transformers==5.1.0
-structlog
-prometheus_client 
-psutil
+structlog==25.4.0
+prometheus_client==0.23.1
+psutil==7.1.0

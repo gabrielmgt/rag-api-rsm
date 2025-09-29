@@ -21,7 +21,7 @@ import requests
 import tempfile
 
 from settings import Settings
-from log_util import setup_logging
+from app.core.logging import setup_logging
 
 settings = Settings()
 logger = setup_logging(settings.ENV)
@@ -186,7 +186,7 @@ def split_documents_with_tracing(docs: str):
     return chunks
 
 @observe(name="embedding_computation")
-async def computate_embeddings_and_add_to_store(chunks: List[str]):
+async def compute_embeddings_and_add_to_store(chunks: List[str]):
     """The method add_documents has embedding computations in it which we trace for using observe() because it doesn't accept the langfuse callback handler"""
     logger.debug("computing_embeddings", chunks_count=len(chunks))
     await vectorstore.aadd_documents(chunks, callbacks=[langfuse_callback_handler])
@@ -258,7 +258,7 @@ async def trace_ingest(request: IngestRequest):
 
         chunks = split_documents_with_tracing(docs)
 
-        await computate_embeddings_and_add_to_store(chunks)
+        await compute_embeddings_and_add_to_store(chunks)
         return chunks
     except Exception as e:
         raise Exception(f"Document ingestion failed: {e}")

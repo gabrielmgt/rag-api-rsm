@@ -1,7 +1,9 @@
-import structlog
+""""Module to provide structured logging and setup logging object"""
+
 import logging
-import sys
-from typing import Optional
+import structlog
+from app.config.pydantic_settings import settings
+
 
 
 def setup_logging(environment: str = "dev") -> structlog.BoundLogger:
@@ -15,7 +17,7 @@ def setup_logging(environment: str = "dev") -> structlog.BoundLogger:
         structlog.dev.set_exc_info,
         structlog.processors.TimeStamper(fmt="%Y-%m-%d %H:%M:%S", utc=False),
     ]
-    
+
     if environment == "dev":
         processors.extend([
             structlog.dev.ConsoleRenderer(colors=True)
@@ -24,7 +26,7 @@ def setup_logging(environment: str = "dev") -> structlog.BoundLogger:
         processors.extend([
             structlog.processors.JSONRenderer()
         ])
-    
+
     structlog.configure(
         processors=processors,
         wrapper_class=structlog.make_filtering_bound_logger(
@@ -34,6 +36,7 @@ def setup_logging(environment: str = "dev") -> structlog.BoundLogger:
         logger_factory=structlog.PrintLoggerFactory(),
         cache_logger_on_first_use=False,
     )
-    
+
     return structlog.get_logger()
 
+logger = setup_logging(settings.ENV)

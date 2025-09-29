@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rag-api"
+version = "0.2.0"
+description = "FastAPI RAG microservice with document ingestion and query capabilities"
+dependencies = [
+    "fastapi==0.116.2",
+    "langchain==0.3.27",
+    "langchain-community==0.3.29",
+    "langchain-google-genai==2.1.12",
+    "langchain-chroma==0.2.6",
+    "langchain-huggingface==0.3.1",
+    "langfuse==3.5.0",
+    "python-dotenv==1.1.1",
+    "pydantic-settings==2.10.1",
+    "pydantic==2.11.9",
+    "uvicorn==0.35.0",
+    "beautifulsoup4==4.13.5",
+    "requests==2.32.5",
+    "sentence_transformers==5.1.0",
+    "structlog==25.4.0",
+    "prometheus_client==0.23.1",
+    "psutil==7.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "fastapi[standard]",
+    "pytest==8.4.2",
+    "httpx==0.28.1",
+    "starlette==0.48.0",
+    "pytest-asyncio==1.2.0",
+]
+
+[project.scripts]
+rag-api = "main:app"
+
+[tool.setuptools.packages.find]
+where = ["app"]
+include = ["*"]
