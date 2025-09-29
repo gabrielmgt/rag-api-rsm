@@ -5,6 +5,7 @@ from app.core.exceptions import QueryException
 from app.core.logging import logger
 from app.models.schemas import QueryRequest, QueryResponse, Source
 from app.core.langgraph.langgraph import graph
+from app.core.observability.langfuse import langfuse_callback_handler
 
 router = APIRouter()
 
@@ -19,7 +20,8 @@ async def query_document(request: QueryRequest):
 
         logger.debug("generating_answer")
 
-        response = await graph.ainvoke({"question": request.question}) # type: ignore
+        response = await graph.ainvoke({"question": request.question}, # type: ignore
+                                       config={"callbacks": [langfuse_callback_handler]})
 
         answer = response["answer"]
         sources = response["context"]
@@ -32,7 +34,9 @@ async def query_document(request: QueryRequest):
 
         logger.debug("answer_generated", answer_length=len(answer))
 
-        logger.info("query_success", answer_length=len(answer), sources_count=len(formatted_sources))
+        logger.info("query_success", 
+                    answer_length=len(answer), 
+                    sources_count=len(formatted_sources))
         return QueryResponse(answer=answer, sources=formatted_sources)
     except QueryException as e:
         logger.error("query_failed", error=str(e))
