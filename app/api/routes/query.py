@@ -1,8 +1,9 @@
 """Query endpoint"""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, status
+from app.core.exceptions import QueryException
 from app.core.logging import logger
-from app.models.schemas import QueryRequest, QueryResponse
+from app.models.schemas import QueryRequest, QueryResponse, Source
 from app.core.langgraph.langgraph import graph
 
 router = APIRouter()
@@ -12,17 +13,28 @@ async def query_document(request: QueryRequest):
     """
     RAG Query endpoint
     """
-    logger.info("query_received", question_length=len(request.question))
+    try:
+        logger.info("query_received", question_length=len(request.question))
 
 
-    logger.debug("generating_answer")
+        logger.debug("generating_answer")
 
-    response = await graph.ainvoke({"question": request.question}) # type: ignore
+        response = await graph.ainvoke({"question": request.question}) # type: ignore
 
-    answer = response["answer"]
-    sources = response["context"]
+        answer = response["answer"]
+        sources = response["context"]
 
-    logger.debug("answer_generated", answer_length=len(answer))
+        formatted_sources = [
+            Source(page=doc.metadata.get("page"), text=doc.page_content)
+            #{"page": doc.metadata.get("page"), "text": doc.page_content}
+            for doc in sources
+        ]
 
-    logger.info("query_success", answer_length=len(answer), sources_count=len(sources))
-    return QueryResponse(answer=answer, sources=sources)
+        logger.debug("answer_generated", answer_length=len(answer))
+
+        logger.info("query_success", answer_length=len(answer), sources_count=len(formatted_sources))
+        return QueryResponse(answer=answer, sources=formatted_sources)
+    except QueryException as e:
+        logger.error("query_failed", error=str(e))
+        raise QueryException(status.HTTP_500_INTERNAL_SERVER_ERROR, 
+                                 "Query failed: Internal Server Error") from e

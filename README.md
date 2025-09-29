@@ -1,9 +1,20 @@
+finished rewrite
+
+now need to test it 
+
+then test the docker
+
+then remove torch/hugging face and just use google embeddings
+
+and also start with ingestion using lifespan or something 
+
+then add idempotence 
+
+
 # RAG API
 This is a FastAPI RAG microservice application with endpoints to provide document URLs for ingestion and answer queries using an LLM with support for full observabilty using LangFuse. 
 ## Considerations:
 Changes to the API: Since the example documents are both URLs, I figured it would make more sense to have an url field so the backend service doesn't have to interpret the string in the content field nor have to process potentially massive requests. I've left the content field for the sake of completeness but have added a constraint to requests so that either only the url or the content field are used (not both) and would like to note that I would probably remove the content field as is in a real scenario.
-
-I have perceived the task to be straightforward enough to complete using a LangChain chain, as the task doesn't require complex state management or conditional branching. The RAG process has a clear sequence: retrieve documents -> format prompt -> generate answer -> return response. 
 
 Tests can currently be run using the Development Environment instructions.
 

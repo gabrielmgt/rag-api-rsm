@@ -1,7 +1,8 @@
 """Module to setup embeddings model"""
 
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from app.core.logging import logger
+from app.config.pydantic_settings import settings
 
 def initialize_embeddings_model():
     """
@@ -10,11 +11,9 @@ def initialize_embeddings_model():
     """
     logger.debug("initializing_embeddings_model", 
                  model_name="sentence-transformers/all-MiniLM-L6-v2")
-    embeddings_model_instance = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2",
-        model_kwargs={'device': 'cpu'},
-        encode_kwargs={'normalize_embeddings': True}
-    )
+    embeddings_model_instance = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001",
+                                                             google_api_key=settings.Google_API_Key
+                                                             )
     logger.info("embeddings_model_initialized")
     return embeddings_model_instance
 

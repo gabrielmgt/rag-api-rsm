@@ -28,6 +28,6 @@ class Settings(BaseSettings):
     LLM_provider: str
     LLM_model: str
     Google_API_Key: str
-    Embeddings_model: str = Field(default="huggingface")
+    Embeddings_model: str = Field(default="google")
 
 settings = Settings() # type: ignore
