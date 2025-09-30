@@ -1,7 +1,7 @@
 """Module to configure and initialize vectorstore"""
 
 from langchain_chroma import Chroma
-from core.embeddings.embeddings_model import embeddings
+from app.core.embeddings.embeddings_model import embeddings
 from app.core.logging import logger
 from app.config.pydantic_settings import settings
 

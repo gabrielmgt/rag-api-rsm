@@ -1,14 +1,14 @@
 finished rewrite
 
-now need to test it 
-
 then test the docker
 
-then remove torch/hugging face and just use google embeddings
+cofigure grafana and prometheus using the template
 
 and also start with ingestion using lifespan or something 
 
 then add idempotence 
+
+and finally tests
 
 
 # RAG API
