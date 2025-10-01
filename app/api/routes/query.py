@@ -1,7 +1,7 @@
 """Query endpoint"""
 
 from fastapi import APIRouter, status
-from app.core.exceptions import QueryException
+from app.core.exceptions.http_exceptions import QueryException
 from app.core.logging import logger
 from app.models.schemas import QueryRequest, QueryResponse, Source
 from app.core.langgraph.langgraph import graph

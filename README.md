@@ -1,12 +1,6 @@
 finished rewrite
 
-then test the docker
-
 cofigure grafana and prometheus using the template
-
-and also start with ingestion using lifespan or something 
-
-then add idempotence 
 
 and finally tests
 

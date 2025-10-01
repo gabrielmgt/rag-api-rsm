@@ -1,4 +1,4 @@
-"""Module that provides Pydantic Models for use in /ingest and /query in api"""
+"""Module with Pydantic Models for ingest, query structures"""
 
 from typing import List, Optional
 from enum import Enum

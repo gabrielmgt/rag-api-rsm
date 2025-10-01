@@ -30,4 +30,7 @@ class Settings(BaseSettings):
     Google_API_Key: str
     Embeddings_model: str = Field(default="google")
 
+    Project_name: str = "RAG-Api"
+    Version: str = "0.2.0"
+
 settings = Settings() # type: ignore

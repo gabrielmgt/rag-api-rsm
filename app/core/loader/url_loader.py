@@ -15,13 +15,15 @@ from app.core.logging import logger
 async def load_document_from_url(url: HttpUrl, document_type: DocumentType) -> List[Document]:
     """Load document from URL based on document type"""
     try:
+        url_str = str(url)
+        docs: List[Document] = []
+
         if document_type == DocumentType.HTML:
-            loader = WebBaseLoader([str(url)])
+            loader = WebBaseLoader([url_str])
             docs = loader.load()
-            return docs
 
         elif document_type == DocumentType.PDF:
-            response = requests.get(str(url), timeout=10)
+            response = requests.get(url_str, timeout=10)
             response.raise_for_status()
 
             with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp_file:
@@ -31,19 +33,22 @@ async def load_document_from_url(url: HttpUrl, document_type: DocumentType) -> L
             try:
                 loader = PyPDFLoader(tmp_file_path)
                 docs = loader.load()
-                return docs
             finally:
                 os.unlink(tmp_file_path)
 
-        elif document_type == DocumentType.TEXT:
+        elif document_type in [DocumentType.TEXT, DocumentType.MARKDOWN]:
             response = requests.get(str(url), timeout=10)
             response.raise_for_status()
-            return [Document(page_content=response.text, metadata={"source": str(url)})]
+            return [Document(page_content=response.text)]
 
-        elif document_type == DocumentType.MARKDOWN:
-            response = requests.get(str(url), timeout=10)
-            response.raise_for_status()
-            return [Document(page_content=response.text, metadata={"source": str(url), "type": "markdown"})]
+        for doc in docs:
+                    doc.metadata = {
+                        "identifier": url_str,  
+                        "source_type": "url", 
+                        "document_type": document_type.value,
+                        "source_url": url_str,
+                    }
+        return docs
 
     except Exception as e:
         logger.error("document_loading_from_url_failed", url=str(url), error=str(e))
