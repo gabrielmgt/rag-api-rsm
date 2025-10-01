@@ -14,7 +14,10 @@ def initialize_vectorstore():
     separate container depending on the running mode defined 
     by environment variable ENV
     """
-    logger.debug("initializing_vectorstore", env=settings.ENV, host=settings.chroma_host, port=settings.chroma_port)
+    logger.debug("initializing_vectorstore",
+                 env=settings.ENV,
+                 host=settings.chroma_host,
+                 port=settings.chroma_port)
     chroma_instance = None
     if settings.ENV == "prod":
         chroma_instance = Chroma(
@@ -48,17 +51,15 @@ def is_already_ingested(request: IngestRequest):
         elif request.content:
             source_check = hashlib.sha256(request.content.encode('utf-8')).hexdigest()
         else:
-            raise ValueError(f"request format not supported")
-        
+            raise ValueError("request format not supported")
+
         existing_docs = vector_store.get(
             where={"identifier": source_check},
             limit=1
         )
-        
+
         return len(existing_docs['ids']) > 0, source_check
-        
+
     except Exception as e:
         logger.error("duplicate_check_failed", error=str(e))
         raise RuntimeError(f"failed to check if document is already ingested {e}") from e
-
-

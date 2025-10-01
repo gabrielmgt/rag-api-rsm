@@ -22,13 +22,14 @@ async def document_from_content_or_url_and_trace(request: IngestRequest):
 
     if is_duplicate:
         logger.warning("duplicate_document_rejected", source_check=source_check_value)
-        raise DuplicateDocumentException(f"document already exists in vector store: {source_check_value}")
-    
+        raise DuplicateDocumentException(
+            f"document already exists in vector store: {source_check_value}")
+
     if request.url:
-        logger.info("loading_document_from_url", 
-                    url=str(request.url), 
+        logger.info("loading_document_from_url",
+                    url=str(request.url),
                     document_type=request.document_type)
-        docs = await load_document_from_url(request.url, 
+        docs = await load_document_from_url(request.url,
                                             request.document_type)
         #for doc in docs:
         #    doc.metadata["source_url"] = str(request.url)
@@ -36,10 +37,10 @@ async def document_from_content_or_url_and_trace(request: IngestRequest):
         logger.info("url_documents_loaded",
                     documents_count=len(docs))
     elif request.content:
-        logger.debug("loading_document_from_content", 
-                      document_type=request.document_type, 
+        logger.debug("loading_document_from_content",
+                      document_type=request.document_type,
                       content_length=len(request.content))
-        docs = load_document_from_content(request.content, 
+        docs = load_document_from_content(request.content,
                                           request.document_type)
         logger.info("document_loaded_from_content")
 
@@ -47,4 +48,3 @@ async def document_from_content_or_url_and_trace(request: IngestRequest):
 
     await compute_embeddings_and_add_to_store(chunks)
     return chunks
-    

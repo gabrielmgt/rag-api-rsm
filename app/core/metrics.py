@@ -1,7 +1,5 @@
 """Module for metrics: metrics (e.g. request counts, latency histograms, error rates)."""
 
-import time
-from fastapi import Request
 from prometheus_client import Counter, Histogram, Gauge
 from starlette_prometheus import metrics, PrometheusMiddleware
 

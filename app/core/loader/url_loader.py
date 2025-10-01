@@ -14,6 +14,8 @@ from app.core.logging import logger
 @observe(name="load_document_from_url")
 async def load_document_from_url(url: HttpUrl, document_type: DocumentType) -> List[Document]:
     """Load document from URL based on document type"""
+    # TODO: Find out if langchain loaders can be used in another way
+    # so we don't have to instance new loaders and other objects every time we call the function
     try:
         url_str = str(url)
         docs: List[Document] = []
@@ -42,12 +44,12 @@ async def load_document_from_url(url: HttpUrl, document_type: DocumentType) -> L
             return [Document(page_content=response.text)]
 
         for doc in docs:
-                    doc.metadata = {
-                        "identifier": url_str,  
-                        "source_type": "url", 
-                        "document_type": document_type.value,
-                        "source_url": url_str,
-                    }
+            doc.metadata = {
+                "identifier": url_str,  
+                "source_type": "url", 
+                "document_type": document_type.value,
+                "source_url": url_str,
+            }
         return docs
 
     except Exception as e:
