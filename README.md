@@ -1,10 +1,3 @@
-finished rewrite
-
-cofigure grafana and prometheus using the template
-
-and finally tests
-
-
 # RAG API
 This is a FastAPI RAG microservice application with endpoints to provide document URLs for ingestion and answer queries using an LLM with support for full observabilty using LangFuse. 
 ## Considerations:
