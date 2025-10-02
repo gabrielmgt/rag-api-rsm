@@ -1,8 +1,8 @@
 """Ingest endpoint"""
 
-from app.core.exceptions.exceptions import DuplicateDocumentException
 from fastapi import APIRouter
 from app.core.logging import logger
+from app.core.exceptions.exceptions import DuplicateDocumentException
 from app.models.schemas import IngestRequest, IngestResponse
 from app.core.ingest.ingest import document_from_content_or_url_and_trace
 
@@ -27,7 +27,7 @@ async def ingest_endpoint(request: IngestRequest):
         logger.warning("ingest_request_duplicate", error=str(e))
         return IngestResponse(
             status="error",
-            message=f"Document already exists",
+            message="Document already exists",
             chunks_created=0
         )
     except Exception as e:
@@ -37,5 +37,3 @@ async def ingest_endpoint(request: IngestRequest):
             message=f"An error occurred: {e}",
             chunks_created=0
         )
-
-

@@ -1,4 +1,4 @@
-"""Module for LangGraph RAG Graph functions"""
+"""Module for LangGraph RAG Graph functions invoke"""
 
 
 from langgraph.graph import START, StateGraph
@@ -10,6 +10,7 @@ from app.core.logging import logger
 
 
 def retrieve(state: State):
+    """LangGraph retrieve step node for RAG"""
     logger.debug("retrieving_relevant_documents")
     retrieved_docs = vector_store.similarity_search(state["question"])
     logger.debug("documents_retrieved", count=len(retrieved_docs))
@@ -18,6 +19,7 @@ def retrieve(state: State):
 
 
 def generate(state: State):
+    """LangGraph generation step node for RAG"""
     docs_content = "\n\n".join(doc.page_content for doc in state["context"])
     messages = prompt.invoke({"question": state["question"], "context": docs_content})
     response = llm.invoke(messages)

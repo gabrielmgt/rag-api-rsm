@@ -7,7 +7,8 @@ from app.config.pydantic_settings import settings
 def initialize_chat_model():
     """
     Setup chat model here
-    Google's model works best for our use case
+    Google's model works best for our use case as it can be tried without 
+    setting up billing information
     """
     logger.debug("initializing_chat_model", model=settings.LLM_model)
     model = ChatGoogleGenerativeAI(

@@ -9,7 +9,7 @@ router = APIRouter()
 
 @router.get("/metrics", tags=["metrics"])
 def metrics():
-    """Metrics endpoint declaration"""
+    """Metrics endpoint declaration. For use with Prometheus"""
     CPU_USAGE.set(psutil.cpu_percent())
     MEMORY_USAGE.set(psutil.virtual_memory().percent)
     return Response(generate_latest(), media_type="text/plain")

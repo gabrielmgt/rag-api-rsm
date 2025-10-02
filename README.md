@@ -7,6 +7,15 @@ Using Grafana and Prometheus along LangChain: Some of the functionality that I d
 
 My changes to the API: Having an URL field instead of a content field gives major benefits to our application. First, the backend service doesn't have to interpret the content field for an URL. This makes the endpoint easier to program and understand, and it also means we can write an application that allows for better modularity, as adding more fields just means adding more modules to our application, without having to rewrite logic that interprets just the content field. Second, we don't have to process requests with massive texts in the content field. It makes more sense to download an URL instead. Nevertheless, I've left the content field for the sake of completeness but have added a constraint to requests so that either only the url or the content field are used (not both) and would like to note that I would probably remove the content field as is in a real scenario.
 
+Idempotence ingest check works for url and content fields in a different way and there is some discussion to be made of this: in the url case, I have decided to solve this by checking if an url has been entered already by using a query on the LangChain VectorStore, which is possible because chunks entered through an url ingest will have an url metadata associated to them. It is debatable if this is a good idea however; an url will not necessarily host the same content forever. Content checks work by calculating a checksum over the entire content string, which could also be an option for downloaded url contents, however it is unlikely that one would match content unless it is a file. Finally, it might be worthwhile to calculate checksums for every chunk, although just as checksums small changes in the string could greatly influence how the text splitter generates chunks. I do think that some interesting functionality could be achieved by having different versions of the same url through the use of tool calls to let the LLM filter retrieved documents by metadata.
+
+Pydantic settings are used to set up two environments: prod and dev. I tried to focus on having as much of the api code be the same for both environments, where setup occurs strictly in app/config/pydantic_settings and involves credentials and dependencies: the vector store instance and eventually the instances of embeddings and LLM models.
+
+Most modules have global variables initializated, where one alternative to look for would be to manage these as context for FastAPI, perhaps using lifespan before any requests are served.
+
+Local environment uses an in-memory ChromaDB while Docker-compose prod environment has a container with ChromaDB. Thanks to LangChain, the way we interact with the ChromaDB VectorStore is identical in both environments.
+
+
 ## Stack
 - Python 3.13
 - FastAPI

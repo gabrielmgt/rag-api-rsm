@@ -7,6 +7,7 @@ from pydantic import Field
 
 
 class Settings(BaseSettings):
+    """Pydantic settings class, declare environment variables to be used here"""
     ENV: Literal['dev', 'prod'] = Field(
         default='dev',
         description="Runtime mode: dev, prod. " \

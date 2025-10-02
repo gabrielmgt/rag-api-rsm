@@ -38,7 +38,7 @@ async def query_document(request: QueryRequest):
                     answer_length=len(answer), 
                     sources_count=len(formatted_sources))
         return QueryResponse(answer=answer, sources=formatted_sources)
-    except QueryException as e:
+    except Exception as e:
         logger.error("query_failed", error=str(e))
-        raise QueryException(status.HTTP_500_INTERNAL_SERVER_ERROR, 
+        raise QueryException(status.HTTP_500_INTERNAL_SERVER_ERROR,
                                  "Query failed: Internal Server Error") from e

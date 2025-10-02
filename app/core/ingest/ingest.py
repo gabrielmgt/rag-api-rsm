@@ -13,7 +13,7 @@ from app.services.vectorstore import is_already_ingested
 @observe(name="document_ingestion")    
 async def document_from_content_or_url_and_trace(request: IngestRequest):
     """
-    Load document from URL if url is detected 
+    Load document from URL if url is detected, otherwise load from content
     Nest both chunk documents and embedding computations
     return: List[Document] chunks
     """
@@ -31,9 +31,6 @@ async def document_from_content_or_url_and_trace(request: IngestRequest):
                     document_type=request.document_type)
         docs = await load_document_from_url(request.url,
                                             request.document_type)
-        #for doc in docs:
-        #    doc.metadata["source_url"] = str(request.url)
-        #    doc.metadata["source"] = str(request.url)
         logger.info("url_documents_loaded",
                     documents_count=len(docs))
     elif request.content:
@@ -43,6 +40,7 @@ async def document_from_content_or_url_and_trace(request: IngestRequest):
         docs = load_document_from_content(request.content,
                                           request.document_type)
         logger.info("document_loaded_from_content")
+    # else case should be handled by pydantic schema
 
     chunks = split_documents_with_tracing(docs)
 
