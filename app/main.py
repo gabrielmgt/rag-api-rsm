@@ -1,8 +1,10 @@
-"""RAG App main file"""
+"""RAG App main file
+TODO use context managers for global variable imports used in this file
+"""
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from app.api.main import api_router
+from app.api.route import api_router
 from app.core.metrics import setup_metrics
 from app.core.logging import logger
 from app.config.pydantic_settings import settings

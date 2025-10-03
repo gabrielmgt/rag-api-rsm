@@ -39,7 +39,7 @@ def initialize_vectorstore():
 
 vector_store = initialize_vectorstore()
 
-def is_already_ingested(request: IngestRequest):
+def is_already_ingested(request: IngestRequest, vector_store_instance: Chroma):
     """
     Check if document is already ingested in vector store
     return: bool (true if exists)
@@ -53,7 +53,7 @@ def is_already_ingested(request: IngestRequest):
         else:
             raise ValueError("request format not supported")
 
-        existing_docs = vector_store.get(
+        existing_docs = vector_store_instance.get(
             where={"identifier": source_check},
             limit=1
         )

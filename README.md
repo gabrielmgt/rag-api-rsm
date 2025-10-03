@@ -7,7 +7,7 @@ Using Grafana and Prometheus along LangChain: Some of the functionality that I d
 
 My changes to the API: Having an URL field instead of a content field gives major benefits to our application. First, the backend service doesn't have to interpret the content field for an URL. This makes the endpoint easier to program and understand, and it also means we can write an application that allows for better modularity, as adding more fields just means adding more modules to our application, without having to rewrite logic that interprets just the content field. Second, we don't have to process requests with massive texts in the content field. It makes more sense to download an URL instead. Nevertheless, I've left the content field for the sake of completeness but have added a constraint to requests so that either only the url or the content field are used (not both) and would like to note that I would probably remove the content field as is in a real scenario.
 
-Idempotence ingest check works for url and content fields in a different way and there is some discussion to be made of this: in the url case, I have decided to solve this by checking if an url has been entered already by using a query on the LangChain VectorStore, which is possible because chunks entered through an url ingest will have an url metadata associated to them. It is debatable if this is a good idea however; an url will not necessarily host the same content forever. Content checks work by calculating a checksum over the entire content string, which could also be an option for downloaded url contents, however it is unlikely that one would match content unless it is a file. Finally, it might be worthwhile to calculate checksums for every chunk, although just as checksums small changes in the string could greatly influence how the text splitter generates chunks. I do think that some interesting functionality could be achieved by having different versions of the same url through the use of tool calls to let the LLM filter retrieved documents by metadata.
+Idempotence ingest check works for url and content fields in a different way and there is some discussion to be made of this: in the url case, I have decided to solve this by checking if an url has been entered already by using a query on the LangChain VectorStore, which is possible because chunks entered through an url ingest will have an url metadata associated to them. It is debatable if this is a good idea however; an url will not necessarily host the same content forever. Content checks work by calculating a checksum over the entire content string, which could also be an option for downloaded url contents, however it is unlikely that one would match content unless it is a file. Finally, it might be worthwhile to calculate checksums for every chunk, although just as checksums small changes in the string could greatly influence how the text splitter generates chunks. I do think that some interesting functionality could be achieved by having different versions of the same url through the use of tool calls to let the LLM filter retrieved documents by metadata. Regardless, there is a clear benefit in the current implementation which is not allowing the same url or content to be input several times in a short time, either through API usage error or user error.
 
 Pydantic settings are used to set up two environments: prod and dev. I tried to focus on having as much of the api code be the same for both environments, where setup occurs strictly in app/config/pydantic_settings and involves credentials and dependencies: the vector store instance and eventually the instances of embeddings and LLM models.
 
@@ -15,13 +15,19 @@ Most modules have global variables initializated, where one alternative to look 
 
 Local environment uses an in-memory ChromaDB while Docker-compose prod environment has a container with ChromaDB. Thanks to LangChain, the way we interact with the ChromaDB VectorStore is identical in both environments.
 
+Document loaders TODO: It would be nice to have a way to use documents loaders without constantly making new instances, but according to the LangChain API docs it seems these objects only receive file paths in the constructor
+
+Current implementation only supports one of each: llm, embeddings model, graph, and vector_store. While this is enough for the required application, I would like to implement the ability to have multiple of each and somehow manage them in such a way that we can use the same module from both query and ingest (for the reason that we want to query the same vector store we ingested to)
+
+Validation errors raised by Pydantic may not follow the API scheme. I believe it would be possible to change this using exception handlers on a future update.
 
 ## Stack
 - Python 3.13
 - FastAPI
-- LangChain / Langfuse (for RAG and observability)
+- LangChain / LangGraph / LangFuse (for RAG and observability)
 - ChromaDB (for vector storage)
 - LLM (Google GenAI)
+- Embeddings (Google GenAI)
 - Docker, Docker Compose
 
 ## API Reference
@@ -69,10 +75,10 @@ returns:
 
 ## Dependencies
 ### Production Dependencies 
-Refer to requirements.txt and docker-compose.yml
+Refer to pyproject.toml dependencies and docker-compose.yml
 
 ### Development Dependencies
-Refer to requirements-dev.txt
+Refer to pyproject.toml dependencies and dev optional dependencies 
 
 ## Instructions
 ### Development Environment
@@ -87,7 +93,7 @@ Start with a virtual environment. I recommend conda:
    ```
 3. Install requirements:
    ```bash
-   pip install -r requirements-dev.txt
+   pip install -e .
    ```
 4. Set environment variables in **.env.dev**. You may use **.env.dev.example** as reference
 	- ENV: "dev"
@@ -104,11 +110,6 @@ Start with a virtual environment. I recommend conda:
 6. Access:
 	- Ingest endpoint: http://localhost:8000/ingest
 	- Query endpoint: http://localhost:8000/query
-
-7. Run tests:
-   ```bash
-   pytest test_main.py
-   ```
 
 ### Production (Docker) Deployment
 1. Set environment variables in **.env.prod**. You may use **.env.prod.example** as reference
@@ -141,24 +142,24 @@ Start with a virtual environment. I recommend conda:
 Use the following cURL commands to ingest some documents:
 ```bash
 curl -X POST "http://localhost:8000/ingest"   -H "Content-Type: application/json"   -d '{
-"url": "https://allendowney.github.io/ThinkPython/index.html",
+"url": "https://fastapi.tiangolo.com/tutorial/handling-errors/",
 "document_type": "html"
 }'
 ```
 ```bash
 curl -X POST "http://localhost:8000/ingest"   -H "Content-Type: application/json"   -d '{
-"url": "https://peps.python.org/pep-0008/",
+"url": "https://python.langchain.com/docs/tutorials/rag/",
 "document_type": "html"
 }'
 ```
 Once documents are ingested, you can query using cURL:
 ```bash
 curl -X POST "http://localhost:8000/query"   -H "Content-Type: application/json"   -d '{
-"question": "What should I do to program Python correctly?"
+"question": "How do you use LangGraph to make a RAG application?"
 }'
 ```
 
-## Project File Tree
+# Project File Tree
 ```
 .
 ├── .dockerignore
@@ -167,15 +168,63 @@ curl -X POST "http://localhost:8000/query"   -H "Content-Type: application/json"
 ├── .gitignore
 ├── docker-compose.yml
 ├── Dockerfile
-├── log_util.py
-├── main.py
-├── prometheus.yml
 ├── README.md
-├── requirements-dev.txt
-├── requirements.txt
-├── settings.py
-├── test_main.py
-├── grafana.env.example
+├── app/
+│   ├── __init__.py
+│   ├── main.py
+│   ├── api/
+│   │   ├── __init__.py
+│   │   ├── lifespan_setup.py
+│   │   ├── main.py
+│   │   └── routes/
+│   │       ├── __init__.py
+│   │       ├── health.py
+│   │       ├── ingest.py
+│   │       ├── metrics.py
+│   │       └── query.py
+│   ├── config/
+│   │   ├── __init__.py
+│   │   └── pydantic_settings.py
+│   ├── core/
+│   │   ├── __init__.py
+│   │   ├── logging.py
+│   │   ├── metrics.py
+│   │   ├── chat_model/
+│   │   │   ├── __init__.py
+│   │   │   ├── llm.py
+│   │   │   ├── prompt.py
+│   │   │   └── services/
+│   │   │       ├── __init__.py
+│   │   │       └── external_llm.py
+│   │   ├── embeddings/
+│   │   │   ├── __init__.py
+│   │   │   ├── compute_embeddings.py
+│   │   │   └── embeddings_model.py
+│   │   ├── exceptions/
+│   │   │   ├── __init__.py
+│   │   │   ├── exceptions.py
+│   │   │   └── http_exceptions.py
+│   │   ├── ingest/
+│   │   │   ├── __init__.py
+│   │   │   └── ingest.py
+│   │   ├── langgraph/
+│   │   │   ├── __init__.py
+│   │   │   ├── langgraph.py
+│   │   │   └── models.py
+│   │   ├── loader/
+│   │   │   ├── __init__.py
+│   │   │   ├── content_loader.py
+│   │   │   ├── text_splitter.py
+│   │   │   └── url_loader.py
+│   │   └── observability/
+│   │       ├── __init__.py
+│   │       └── langfuse.py
+│   ├── models/
+│   │   ├── __init__.py
+│   │   └── schemas.py
+│   └── services/
+│       ├── __init__.py
+│       └── vectorstore.py
 ├── grafana/
 │   ├── dashboards/
 │   │   └── app-monitoring.json
@@ -184,3 +233,69 @@ curl -X POST "http://localhost:8000/query"   -H "Content-Type: application/json"
 │       │   └── dashboard.yml
 │       └── datasources/
 │           └── prometheus.yml
+├── prometheus/
+│   └── prometheus.yml
+├── pyproject.toml
+├── settings.py
+└── test_main.py
+```
+# Project Structure
+
+## Root Level
+- **app/main.py**: The main FastAPI application file containing the FastAPI app instance and lifespan function for preloading base documents (PEP8 and Think Python). This file includes router configuration, metrics setup, and is the entry point for uvicorn or FastAPI dev.
+
+## API Module
+- **app/api/**: Contains all HTTP API-related components
+- **app/api/lifespan_setup.py**: Handles document ingestion during FastAPI's lifespan initialization, similar to the ingest endpoint but with different logging
+- **app/api/route.py**: Aggregates all routes from the routes directory
+- **app/api/routes/**: Contains individual endpoint implementations
+  - **app/api/routes/health.py**: Health check endpoint returning a status dictionary
+  - **app/api/routes/ingest.py**: Ingestion endpoint that calls core functions with idempotence checks
+  - **app/api/routes/metrics.py**: Prometheus metrics endpoint
+  - **app/api/routes/query.py**: Query endpoint that processes requests through the RAG application
+
+## Configuration
+- **app/config/**: Contains Pydantic settings management
+- **app/config/pydantic_settings.py**: Handles environment variable configuration
+
+## Core Application Logic
+- **app/core/**: Contains RAG application business logic reusable across different interfaces
+- **app/core/logging.py**: Configures structlog logger with production and development presets
+- **app/core/metrics.py**: Sets up Prometheus middleware and metrics collection
+
+### Chat Model Components
+- **app/core/chat_model/**: Manages language model interactions
+- **app/core/chat_model/llm.py**: Initializes chat model instances
+- **app/core/chat_model/prompt.py**: Defines LangChain prompt templates with context handling instructions
+
+### Embeddings Components
+- **app/core/embeddings/**: Handles embedding model operations
+- **app/core/embeddings/compute_embeddings.py**: Manages embedding calculation during document ingestion
+- **app/core/embeddings/embeddings_model.py**: Initializes and exports the embeddings model instance
+
+### Ingestion Components
+- **app/core/ingest/ingest.py**: Provides ingestion functionality to other services with duplicate detection
+
+### LangGraph Components
+- **app/core/langgraph/langgraph.py**: Defines the RAG application graph with retrieve and generate nodes
+- **app/core/langgraph/models.py**: Defines TypedDict state for LangGraph
+
+### Document Loading Components
+- **app/core/loader/context_loader.py**: Loads documents from content fields with checksum calculation
+- **app/core/loader/text_splitter.py**: Implements recursive character text splitting
+- **app/core/loader/url_loader.py**: Handles document loading from URLs with experimental HTML support
+
+### Observability
+- **app/core/observability/langfuse.py**: Manages Langfuse callback handler and object instances
+
+### Vector Store
+- **app/core/vector_store/vectorstore.py**: Chroma-based vector store implementation with in-memory testing and Docker production options
+
+## Exceptions
+- **app/exceptions/**: Contains exception definitions
+- **app/exceptions/exceptions.py**: General application exceptions including duplicate document handling
+- **app/exceptions/http_exceptions.py**: FastAPI HTTP exception subclasses
+- **app/exceptions/handlers.py**: FastAPI exception handlers (currently unused)
+
+## Models
+- **app/models/schemas.py**: Pydantic BaseModels for requests, responses, and source data with validation for URL/content fields

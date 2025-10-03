@@ -12,7 +12,7 @@ def initialize_chat_model():
     """
     logger.debug("initializing_chat_model", model=settings.LLM_model)
     model = ChatGoogleGenerativeAI(
-        model=settings.LLM_model,  
+        model=settings.LLM_model,
         google_api_key=settings.Google_API_Key,
         temperature=0.1
         )

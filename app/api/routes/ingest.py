@@ -1,10 +1,11 @@
 """Ingest endpoint"""
 
-from fastapi import APIRouter
+from fastapi import APIRouter#, status
 from app.core.logging import logger
-from app.core.exceptions.exceptions import DuplicateDocumentException
+from app.exceptions.exceptions import DuplicateDocumentException
 from app.models.schemas import IngestRequest, IngestResponse
 from app.core.ingest.ingest import document_from_content_or_url_and_trace
+#from app.exceptions.http_exceptions import IngestionException
 
 router = APIRouter()
 
@@ -17,13 +18,12 @@ async def ingest_endpoint(request: IngestRequest):
     try:
         chunks = await document_from_content_or_url_and_trace(request)
         logger.info("request_ingest_completed", chunks_created=len(chunks))
-
         return IngestResponse(
             status="success",
             message="Successfully ingested document.",
             chunks_created=len(chunks)
         )
-    except DuplicateDocumentException:
+    except DuplicateDocumentException as e:
         logger.warning("ingest_request_duplicate", error=str(e))
         return IngestResponse(
             status="error",
@@ -34,6 +34,8 @@ async def ingest_endpoint(request: IngestRequest):
         logger.error("ingest_failed", error=str(e))
         return IngestResponse(
             status="error",
-            message=f"An error occurred: {e}",
+            message="An error occurred",
             chunks_created=0
         )
+        #raise IngestionException(status.HTTP_500_INTERNAL_SERVER_ERROR,
+        #                         "Query failed: Internal Server Error") from e

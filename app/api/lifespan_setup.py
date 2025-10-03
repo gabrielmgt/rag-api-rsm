@@ -4,7 +4,7 @@ from pydantic import HttpUrl
 from app.models.schemas import IngestRequest, DocumentType
 from app.core.logging import logger
 from app.core.ingest.ingest import document_from_content_or_url_and_trace
-from app.core.exceptions.exceptions import DuplicateDocumentException
+from app.exceptions.exceptions import DuplicateDocumentException
 
 async def auto_ingest_base_documents():
     """
@@ -24,6 +24,11 @@ async def auto_ingest_base_documents():
     for i, doc in enumerate(docs):
         try:
             chunks = await document_from_content_or_url_and_trace(doc)
-            logger.info("auto_ingest_completed", document_url = doc.url, chunks_created=(len(chunks)))
+            logger.info("auto_ingest_completed",
+                        document_url = doc.url,
+                        chunks_created=(len(chunks))
+                        )
         except DuplicateDocumentException:
-            logger.warning("auto_ingest_found_duplicate", auto_ingest_doc_id = i, document_url = doc.url)
+            logger.warning("auto_ingest_found_duplicate",
+                           auto_ingest_doc_id = i,
+                           document_url = doc.url)

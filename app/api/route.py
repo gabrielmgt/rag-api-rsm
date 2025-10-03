@@ -1,5 +1,6 @@
-from fastapi import APIRouter
+"""FastAPI routes for our FastAPI app"""
 
+from fastapi import APIRouter
 from app.api.routes import health, ingest, metrics, query
 
 

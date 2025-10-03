@@ -3,7 +3,7 @@
 
 from langgraph.graph import START, StateGraph
 from app.core.langgraph.models import State
-from app.services.vectorstore import vector_store
+from app.core.vector_store.vectorstore import vector_store
 from app.core.chat_model.prompt import prompt
 from app.core.chat_model.llm import llm
 from app.core.logging import logger

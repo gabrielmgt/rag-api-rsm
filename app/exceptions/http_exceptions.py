@@ -10,8 +10,12 @@ class IngestionException(HTTPException):
         self,
         status_code: int = status.HTTP_500_INTERNAL_SERVER_ERROR,
         detail: Any = None,
+
     ):
         super().__init__(status_code=status_code, detail=detail)
+        self.status = "error"
+        self.message = "An error occurred"
+        self.chunks_created = 0
 
 
 class QueryException(HTTPException):
