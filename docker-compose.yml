@@ -31,8 +31,6 @@ services:
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.retention.time=200h'
-    env_file:
-      - ./prometheus.env
     restart: unless-stopped
 
   grafana:

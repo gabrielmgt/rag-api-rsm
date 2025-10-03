@@ -131,24 +131,19 @@ Start with a virtual environment. I recommend conda:
 	- CHROMA_HOST: "chroma" (Container running ChromaDB)
 	- CHROMA_PORT: 8000 (ChromaDB port)
 
-2. Set additional Prometheus environment variables in **prometheus.env**. You may use **prometheus.env.example** as reference
-	- PROMETHEUS_TARGET: localhost
-	- RAG_API_TARGET: FastAPI container (rag-api)
-	
 2. Set additional Grafana environment variables in **grafana.env**. You may use **grafana.env.example** as reference
 	- GF_SECURITY_ADMIN_PASSWORD: Set a password to access Grafana
 	- GF_SECURITY_ADMIN_USER: Set an admin username
-	- PROMETHEUS_HOST: Prometheus host (prometheus)
  
-4. Build and run services in background using Docker Compose:
+3. Build and run services in background using Docker Compose:
    ```bash
    docker-compose up --build -d
    ```
-5. View logs
+4. View logs
 	 ```
 	 docker-compose logs -f rag-api chroma
 	 ```
-6. Access:
+5. Access:
 	- Ingest endpoint: http://localhost:8000/ingest
 	- Query endpoint: http://localhost:8000/query
 	- Prometheus: http://localhost:9090
