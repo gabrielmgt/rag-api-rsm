@@ -124,7 +124,7 @@ Start with a virtual environment. I recommend conda:
 	- ENV: "prod"
 	- LANGFUSE_SECRET_KEY: LangFuse Secret Key
 	- LANGFUSE_PUBLIC_KEY: LangFuse Public Key
-	- LANGFUSE_HOST: https://us.cloud.langfuse.com or self-hosted
+	- LANGFUSE_HOST: https://us.cloud.langfuse.com (or self-hosted url)
 	- GOOGLE_API_KEY: Google API Key
 	- LLM_PROVIDER: "google" only supported currently
 	- LLM_MODEL: "gemini-2.0-flash" (ChatGoogleGenerativeAI available models)
@@ -140,11 +140,15 @@ Start with a virtual environment. I recommend conda:
 	- GF_SECURITY_ADMIN_USER: Set an admin username
 	- PROMETHEUS_HOST: Prometheus host (prometheus)
  
-4. Build and run the services using Docker Compose:
+4. Build and run services in background using Docker Compose:
    ```bash
-   docker-compose up --build
+   docker-compose up --build -d
    ```
-5. Access:
+5. View logs
+	 ```
+	 docker-compose logs -f rag-api chroma
+	 ```
+6. Access:
 	- Ingest endpoint: http://localhost:8000/ingest
 	- Query endpoint: http://localhost:8000/query
 	- Prometheus: http://localhost:9090

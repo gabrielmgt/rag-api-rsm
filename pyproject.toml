@@ -23,7 +23,8 @@ dependencies = [
     "prometheus_client==0.23.1",
     "psutil==7.1.0",
     "langgraph==0.6.7",
-    "starlette-prometheus==0.10.0"
+    "starlette-prometheus==0.10.0",
+    "pypdf==6.1.1"
 ]
 
 [project.optional-dependencies]
