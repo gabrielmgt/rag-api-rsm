@@ -180,14 +180,17 @@ curl -X POST "http://localhost:8000/query"   -H "Content-Type: application/json"
 ├── .gitignore
 ├── docker-compose.yml
 ├── Dockerfile
+├── grafana.env.example
+├── prometheus/
+│   └── prometheus.yml
+├── pyproject.toml
 ├── README.md
 ├── app/
-│   ├── __init__.py
 │   ├── main.py
 │   ├── api/
 │   │   ├── __init__.py
 │   │   ├── lifespan_setup.py
-│   │   ├── main.py
+│   │   ├── route.py
 │   │   └── routes/
 │   │       ├── __init__.py
 │   │       ├── health.py
@@ -204,18 +207,11 @@ curl -X POST "http://localhost:8000/query"   -H "Content-Type: application/json"
 │   │   ├── chat_model/
 │   │   │   ├── __init__.py
 │   │   │   ├── llm.py
-│   │   │   ├── prompt.py
-│   │   │   └── services/
-│   │   │       ├── __init__.py
-│   │   │       └── external_llm.py
+│   │   │   └── prompt.py
 │   │   ├── embeddings/
 │   │   │   ├── __init__.py
 │   │   │   ├── compute_embeddings.py
 │   │   │   └── embeddings_model.py
-│   │   ├── exceptions/
-│   │   │   ├── __init__.py
-│   │   │   ├── exceptions.py
-│   │   │   └── http_exceptions.py
 │   │   ├── ingest/
 │   │   │   ├── __init__.py
 │   │   │   └── ingest.py
@@ -228,28 +224,28 @@ curl -X POST "http://localhost:8000/query"   -H "Content-Type: application/json"
 │   │   │   ├── content_loader.py
 │   │   │   ├── text_splitter.py
 │   │   │   └── url_loader.py
-│   │   └── observability/
+│   │   ├── observability/
+│   │   │   ├── __init__.py
+│   │   │   └── langfuse.py
+│   │   └── vector_store/
 │   │       ├── __init__.py
-│   │       └── langfuse.py
-│   ├── models/
+│   │       └── vectorstore.py
+│   ├── exceptions/
 │   │   ├── __init__.py
-│   │   └── schemas.py
-│   └── services/
+│   │   ├── exceptions.py
+│   │   ├── handlers.py
+│   │   └── http_exceptions.py
+│   └── models/
 │       ├── __init__.py
-│       └── vectorstore.py
-├── grafana/
-│   ├── dashboards/
-│   │   └── app-monitoring.json
-│   └── provisioning/
-│       ├── dashboards/
-│       │   └── dashboard.yml
-│       └── datasources/
-│           └── prometheus.yml
-├── prometheus/
-│   └── prometheus.yml
-├── pyproject.toml
-├── settings.py
-└── test_main.py
+│       └── schemas.py
+└── grafana/
+    ├── dashboards/
+    │   └── app-monitoring.json
+    └── provisioning/
+        ├── dashboards/
+        │   └── dashboard.yml
+        └── datasources/
+            └── prometheus.yml
 ```
 # FastAPI App Structure
 
