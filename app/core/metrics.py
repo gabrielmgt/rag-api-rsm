@@ -1,7 +1,9 @@
 """Module for metrics: metrics (e.g. request counts, latency histograms, error rates)."""
 
+import time
+from fastapi import Request
 from prometheus_client import Counter, Histogram, Gauge
-from starlette_prometheus import metrics, PrometheusMiddleware
+from starlette_prometheus import metrics
 
 REQUEST_COUNT = Counter("http_requests_total",
                         "Total HTTP requests", 
@@ -19,8 +21,17 @@ def setup_metrics(app):
     Args:
         app: FastAPI application instance
     """
-    # Add Prometheus middleware
-    app.add_middleware(PrometheusMiddleware)
+    @app.middleware("http")
+    async def metrics_middleware(request: Request, call_next):
+        start_time = time.time()
+        response = await call_next(request)
+        duration = time.time() - start_time
+        REQUEST_COUNT.labels(request.method, 
+                             request.url.path, 
+                             str(response.status_code)
+                            ).inc()
+        REQUEST_DURATION.observe(duration)
+        return response
 
     # Add metrics endpoint
     app.add_route("/metrics", metrics)
