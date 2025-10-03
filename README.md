@@ -72,7 +72,7 @@ returns:
     {
       "text": "<passage text>",
       "source_document": "<url | 'user_input' | 'unknown'>",
-      "page": "<number, optional>"
+      "page": "<number, null>"
     }, 
 		...
   ]
