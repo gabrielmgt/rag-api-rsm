@@ -23,6 +23,8 @@ This is a FastAPI RAG microservice application with endpoints to provide documen
 
  - Validation errors raised by Pydantic may not follow the API scheme. I believe it would be possible to change this using exception handlers on a future update.
 
+ - Prompt choice: the prompt used for RAG encourages using the context to answer the question, answering that it doesn't know the answer if it's the case, or to say it doesn't have enough information if context was irrelevant. I went for a concise, 3 sentence maximum answer as shown in the LangChain RAG tutorial, but also because it makes more sense to keep the answer constrained to the content of the context, without necessity of elaborating further.
+
 ## Stack
 - Python 3.13
 - FastAPI
@@ -129,15 +131,20 @@ Start with a virtual environment. I recommend conda:
 	- CHROMA_HOST: "chroma" (Container running ChromaDB)
 	- CHROMA_PORT: 8000 (ChromaDB port)
 
-2. Set Grafana environment variables in **grafana.env**. You may use **grafana.env.example** as reference
+2. Set additional Prometheus environment variables in **prometheus.env**. You may use **prometheus.env.example** as reference
+	- PROMETHEUS_TARGET: localhost
+	- RAG_API_TARGET: FastAPI container (rag-api)
+	
+2. Set additional Grafana environment variables in **grafana.env**. You may use **grafana.env.example** as reference
 	- GF_SECURITY_ADMIN_PASSWORD: Set a password to access Grafana
 	- GF_SECURITY_ADMIN_USER: Set an admin username
+	- PROMETHEUS_HOST: Prometheus host (prometheus)
  
-3. Build and run the services using Docker Compose:
+4. Build and run the services using Docker Compose:
    ```bash
    docker-compose up --build
    ```
-4. Access:
+5. Access:
 	- Ingest endpoint: http://localhost:8000/ingest
 	- Query endpoint: http://localhost:8000/query
 	- Prometheus: http://localhost:9090
@@ -245,14 +252,14 @@ curl -X POST "http://localhost:8000/query"   -H "Content-Type: application/json"
 ├── settings.py
 └── test_main.py
 ```
-# Project Structure
+# FastAPI App Structure
 
 ## Root Level
 - **app/main.py**: The main FastAPI application file containing the FastAPI app instance and lifespan function for preloading base documents (PEP8 and Think Python). This file includes router configuration, metrics setup, and is the entry point for uvicorn or FastAPI dev.
 
 ## API Module
 - **app/api/**: Contains all HTTP API-related components
-- **app/api/lifespan_setup.py**: Handles document ingestion during FastAPI's lifespan initialization, similar to the ingest endpoint but with different logging
+- **app/api/lifespan_setup.py**: Handles document ingestion during FastAPI's lifespan initialization, similar to the ingest endpoint but with different logging. Documents to preload can be added here. 
 - **app/api/route.py**: Aggregates all routes from the routes directory
 - **app/api/routes/**: Contains individual endpoint implementations
   - **app/api/routes/health.py**: Health check endpoint returning a status dictionary
@@ -262,17 +269,17 @@ curl -X POST "http://localhost:8000/query"   -H "Content-Type: application/json"
 
 ## Configuration
 - **app/config/**: Contains Pydantic settings management
-- **app/config/pydantic_settings.py**: Handles environment variable configuration
+- **app/config/pydantic_settings.py**: Handles environment variable configuration for the FastAPI app
 
 ## Core Application Logic
-- **app/core/**: Contains RAG application business logic reusable across different interfaces
+- **app/core/**: Contains RAG application business logic meant to be reusable across different interfaces
 - **app/core/logging.py**: Configures structlog logger with production and development presets
 - **app/core/metrics.py**: Sets up Prometheus middleware and metrics collection
 
 ### Chat Model Components
-- **app/core/chat_model/**: Manages language model interactions
+- **app/core/chat_model/**: Manages LLM interactions
 - **app/core/chat_model/llm.py**: Initializes chat model instances
-- **app/core/chat_model/prompt.py**: Defines LangChain prompt templates with context handling instructions
+- **app/core/chat_model/prompt.py**: Defines LangChain prompt templates. 
 
 ### Embeddings Components
 - **app/core/embeddings/**: Handles embedding model operations
