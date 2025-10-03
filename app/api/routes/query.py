@@ -26,11 +26,32 @@ async def query_document(request: QueryRequest):
         answer = response["answer"]
         sources = response["context"]
 
-        formatted_sources = [
-            Source(page=doc.metadata.get("page"), text=doc.page_content)
-            #{"page": doc.metadata.get("page"), "text": doc.page_content}
-            for doc in sources
-        ]
+        formatted_sources = []
+        for doc in sources:
+            match doc.metadata.get("source_type"):
+                case "url":
+                    source_doc = doc.metadata.get("source_url")
+                    formatted_sources.append(
+                        Source(
+                            page=doc.metadata.get("page"),
+                            text=doc.page_content,
+                            source=source_doc
+                        )
+                    )
+                case "content":
+                    formatted_sources.append(
+                        Source(
+                            text=doc.page_content,
+                            source="user_input"
+                        )
+                    )
+                case _:
+                    formatted_sources.append(
+                        Source(
+                            text=doc.page_content,
+                            source="unknown"
+                        )
+                    )
 
         logger.debug("answer_generated", answer_length=len(answer))
 

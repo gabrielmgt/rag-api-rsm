@@ -5,7 +5,9 @@ Using LangGraph graphs over LangChain chains: When attempting to use langchain c
 
 Using Grafana and Prometheus along LangChain: Some of the functionality that I divided along the structure of this project is expected to be able to work regardless of whether we want an HTTP API or another protocol. Namely, my hope is that all functionality for the RAG application itself be programmed in the core folder of this app, whereas HTTP endpoints and its logic be handled somewhere else, for the eventual case that we might want to use gRPC or something else. Therefore, I think it's not a bad idea to keep some metrics outside of LangFuse; rather, LangFuse should mainly care about tracing everything related to the RAG functionality itself, while something like Prometheus and Grafana can instead be used on metrics regarding HTTP requests.
 
-My changes to the API: Having an URL field instead of a content field gives major benefits to our application. First, the backend service doesn't have to interpret the content field for an URL. This makes the endpoint easier to program and understand, and it also means we can write an application that allows for better modularity, as adding more fields just means adding more modules to our application, without having to rewrite logic that interprets just the content field. Second, we don't have to process requests with massive texts in the content field. It makes more sense to download an URL instead. Nevertheless, I've left the content field for the sake of completeness but have added a constraint to requests so that either only the url or the content field are used (not both) and would like to note that I would probably remove the content field as is in a real scenario.
+My changes to the ingest API: I added an url field because having only a content field is ambiguous. An extra URL field gives two major benefits to our application. First, the backend service doesn't have to interpret the content field for an URL. This makes the endpoint easier to program and understand, and it also means we can write an application that allows for better modularity, as adding more fields just means adding more modules to our application, without having to rewrite logic that interprets the content field. Second, we don't have to process requests with massive texts in the content field. It makes more sense to download an URL instead. Nevertheless, I've left the content field for the sake of completeness but have added a constraint to requests so that either only the url or the content field are used (not both) and would like to note that I would probably remove the content field as is in a real scenario.
+
+My changes to the query API: I believe it is more reasonable to provide a document identifier instead of a page. This makes the source of the context to the answer easier to find, because a RAG application will likely have more than one document from which to pull information out of. A page field alone can hardly be used to find what document it belongs to. Moreover, not all documents may be paginated, and changing this field means that we can futureproof our API to new types of document. A trade-off for this however, means that we must track more metadata. Luckily, we already track metadata for sources in our idempotence check during ingestion, which is talked about below. Nevertheless, a page is not entirely useless, and may be left as an optional field. 
 
 Idempotence ingest check works for url and content fields in a different way and there is some discussion to be made of this: in the url case, I have decided to solve this by checking if an url has been entered already by using a query on the LangChain VectorStore, which is possible because chunks entered through an url ingest will have an url metadata associated to them. It is debatable if this is a good idea however; an url will not necessarily host the same content forever. Content checks work by calculating a checksum over the entire content string, which could also be an option for downloaded url contents, however it is unlikely that one would match content unless it is a file. Finally, it might be worthwhile to calculate checksums for every chunk, although just as checksums small changes in the string could greatly influence how the text splitter generates chunks. I do think that some interesting functionality could be achieved by having different versions of the same url through the use of tool calls to let the LLM filter retrieved documents by metadata. Regardless, there is a clear benefit in the current implementation which is not allowing the same url or content to be input several times in a short time, either through API usage error or user error.
 
@@ -40,14 +42,14 @@ Validation errors raised by Pydantic may not follow the API scheme. I believe it
 ```json
 {
   "url": "https://example.com",  // OR
-  "content": "Raw text content",
-  "document_type": "html|text|pdf|markdown"
+  "content": "<text>",
+  "document_type": "<'html' | 'text' | 'pdf' | 'markdown'>"
 }
 ```
 returns:
 ```json
 {
-	"status": "success|error",
+	"status": "'success'|'error'",
 	"message": "<status message>",
 	"chunks_created": `<number>`
 }
@@ -63,11 +65,15 @@ returns:
 returns:
 ```json
 {
-	"answer": "<generated answer>",
-	"sources": [
-		{ "page": `<number>`, "text": "<passage text>" },
-		…
-	]
+  "answer": "<generated answer>",
+  "sources": [
+    {
+      "text": "<passage text>",
+      "source_document": "<url | 'user_input' | 'unknown'>",
+      "page": "<number, optional>"
+    }, 
+		...
+  ]
 }
 ```
 ### Metrics Endpoint
