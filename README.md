@@ -101,7 +101,7 @@ Start with a virtual environment. I recommend conda:
    ```
 3. Install requirements:
    ```bash
-   pip install -e .
+   pip install -e ".[dev]"
    ```
 4. Set environment variables in **.env.dev**. You may use **.env.dev.example** as reference
 	- ENV: "dev"
@@ -113,7 +113,7 @@ Start with a virtual environment. I recommend conda:
 	- LLM_MODEL: "gemini-2.0-flash" (ChatGoogleGenerativeAI available models)
 5. Run the FastAPI application in development mode:
    ```bash
-   fastapi dev main.py
+   fastapi dev app/main.py
    ```
 6. Access:
 	- Ingest endpoint: http://localhost:8000/ingest
